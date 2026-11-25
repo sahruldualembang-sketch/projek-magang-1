@@ -119,6 +119,8 @@ Laporan Laba/Rugi versi awal adalah ringkasan manajerial: pendapatan dihitung da
 
 Jangan arahkan document root ke root proyek. Arahkan Nginx/Apache ke folder `public/`. Gunakan `.env` produksi yang tidak masuk Git, `APP_DEBUG=false`, HTTPS, database yang tidak terbuka ke internet, backup terenkripsi, dan storage privat. Deployment belum dilakukan.
 
+Salin `.env.production.example` sebagai `.env` di server, lalu isi semua nilai rahasia (database, `APP_KEY`, dan `ATTENDANCE_API_KEY`). Konfigurasi lengkap Nginx, cron, dan langkah verifikasi ada di `docs/panduan-deploy-sim.md`.
+
 ### Checklist sebelum publikasi
 
 - [ ] `.env` produksi: `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL` memakai HTTPS, `APP_KEY` unik, dan session/cache disesuaikan dengan infrastruktur.
