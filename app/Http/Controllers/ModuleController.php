@@ -610,10 +610,35 @@ class ModuleController extends Controller
      $statusField = collect($d['fields'])->firstWhere('name', 'status');
      $statusOptions = $statusField['options'] ?? [];
 
-     return $r->validate([
+     $rawProgress = $r->input('progress');
+     $progress = is_numeric($rawProgress) ? (int) $rawProgress : $rawProgress;
+     $status = (string) $r->input('status', '');
+
+     // Jaga konsistensi progres dan status agar tidak ada kombinasi
+     // mustahil seperti "80% tapi Belum Dimulai" atau "100% tapi Proses".
+     if (is_int($progress)) {
+         if ($progress >= 100) {
+             $progress = 100;
+             $status = 'Selesai';
+         } elseif ($status === 'Selesai') {
+             $progress = 100;
+         } elseif ($progress <= 0) {
+             $progress = 0;
+             if (! in_array($status, ['Belum Dimulai', 'Tertunda'], true)) {
+                 $status = 'Belum Dimulai';
+             }
+         } elseif ($status === 'Belum Dimulai') {
+             $progress = 0;
+         }
+     }
+
+     return Validator::make([
+         'progress' => $progress,
+         'status' => $status,
+     ], [
          'progress' => ['required', 'integer', 'min:0', 'max:100'],
          'status' => ['required', Rule::in($statusOptions)],
-     ]);
+     ])->validate();
  }
  private function workflow(?array $d): ?array
  {

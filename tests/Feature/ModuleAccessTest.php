@@ -384,10 +384,10 @@ class ModuleAccessTest extends TestCase
    'status' => 'Selesai',
   ])->assertRedirect(route('modules.index', 'activities'));
 
-  // Verifikasi data tersimpan di database
+  // Status Selesai kini otomatis menyamakan progres menjadi 100%
   $this->assertDatabaseHas('activities', [
    'id' => $activityId,
-   'progress' => 80,
+   'progress' => 100,
    'status' => 'Selesai',
   ]);
  }

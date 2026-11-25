@@ -50,8 +50,10 @@
         </div>
 
         <p class="form-hint">
-            Jika progres sudah mencapai <strong>100%</strong>, ubah status menjadi <strong>Selesai</strong>.
-            Setiap perubahan dicatat di riwayat audit.
+            Progres dan status dijaga tetap konsisten: <strong>0%</strong> berarti <strong>Belum Dimulai</strong>,
+            <strong>1–99%</strong> berarti <strong>Proses</strong> atau <strong>Tertunda</strong>, dan
+            <strong>100%</strong> otomatis menjadi <strong>Selesai</strong>. Memilih status Selesai otomatis
+            mengisi progres 100%, memilih Belum Dimulai mengembalikan progres ke 0%. Setiap perubahan dicatat di riwayat audit.
         </p>
 
         <div class="form-actions">
@@ -59,4 +61,24 @@
             <button class="btn primary" type="submit">Simpan Progres</button>
         </div>
     </form>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const progress = document.getElementById('progress');
+            const status = document.getElementById('status');
+            if (!progress || !status) return;
+
+            progress.addEventListener('input', function () {
+                const value = Number(this.value);
+                if (value >= 100) status.value = 'Selesai';
+                else if (value === 0) status.value = 'Belum Dimulai';
+                else if (status.value === 'Selesai' || status.value === 'Belum Dimulai') status.value = 'Proses';
+            });
+
+            status.addEventListener('change', function () {
+                if (this.value === 'Selesai') progress.value = 100;
+                if (this.value === 'Belum Dimulai') progress.value = 0;
+            });
+        });
+    </script>
 @endsection
