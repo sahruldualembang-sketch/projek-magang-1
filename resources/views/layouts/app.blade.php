@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'SIM-LJI') · PT Liny Jaya Informatika</title>
+    <link rel="icon" type="image/jpeg" href="{{ asset('images/logo-pt-lji.jpeg') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body>
@@ -47,7 +48,7 @@
 <div class="app-shell">
     <aside class="sidebar" id="sidebar">
         <a href="{{ route('dashboard') }}" class="brand">
-            <span class="brand-mark">LJ</span>
+            <img class="brand-mark" src="{{ asset('images/logo-pt-lji.jpeg') }}" alt="Logo PT Liny Jaya Informatika" width="42" height="42">
             <span class="brand-info">
                 <strong>SIM-LJI</strong>
                 <small>PT Liny Jaya Informatika</small>

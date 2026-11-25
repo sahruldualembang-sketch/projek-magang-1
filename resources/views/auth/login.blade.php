@@ -5,12 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Masuk · SIM-LJI</title>
+    <link rel="icon" type="image/jpeg" href="{{ asset('images/logo-pt-lji.jpeg') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="login-page">
     <form class="login-card" method="POST" action="{{ route('login') }}">
         @csrf
-        <div class="brand-mark">LJ</div>
+        <img class="brand-mark" src="{{ asset('images/logo-pt-lji.jpeg') }}" alt="Logo PT Liny Jaya Informatika" width="42" height="42">
         <p class="eyebrow">PT LINY JAYA INFORMATIKA</p>
         <h1>Selamat datang kembali</h1>
         <p class="muted">Masuk menggunakan akun perusahaan untuk melanjutkan ke SIM-LJI.</p>
