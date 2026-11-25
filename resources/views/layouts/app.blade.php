@@ -48,7 +48,7 @@
 <div class="app-shell">
     <aside class="sidebar" id="sidebar">
         <a href="{{ route('dashboard') }}" class="brand">
-            <img class="brand-mark" src="{{ asset('images/logo-pt-lji.jpeg') }}" alt="Logo PT Liny Jaya Informatika" width="42" height="42">
+            <span class="brand-mark"><img class="brand-mark-logo" src="{{ asset('assets/logo.webp') }}" alt="Logo PT Liny Jaya Informatika" width="30" height="30"></span>
             <span class="brand-info">
                 <strong>SIM-LJI</strong>
                 <small>PT Liny Jaya Informatika</small>
