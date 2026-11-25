@@ -97,4 +97,34 @@ class ActivityProgressConsistencyTest extends TestCase
 
         $this->assertStored(0, 'Belum Dimulai');
     }
+
+    public function test_full_edit_form_also_normalizes_progress_and_status(): void
+    {
+        $employeeId = DB::table('activities')->where('id', $this->activityId)->value('employee_id');
+
+        $this->put('/modul/activities/' . $this->activityId, [
+            'employee_id' => $employeeId,
+            'title' => 'Aktivitas QA',
+            'activity_date' => '2026-11-24',
+            'progress' => 80,
+            'status' => 'Belum Dimulai',
+        ])->assertRedirect();
+
+        $this->assertStored(0, 'Belum Dimulai');
+    }
+
+    public function test_full_edit_form_marks_full_progress_as_selesai(): void
+    {
+        $employeeId = DB::table('activities')->where('id', $this->activityId)->value('employee_id');
+
+        $this->put('/modul/activities/' . $this->activityId, [
+            'employee_id' => $employeeId,
+            'title' => 'Aktivitas QA',
+            'activity_date' => '2026-11-24',
+            'progress' => 100,
+            'status' => 'Proses',
+        ])->assertRedirect();
+
+        $this->assertStored(100, 'Selesai');
+    }
 }

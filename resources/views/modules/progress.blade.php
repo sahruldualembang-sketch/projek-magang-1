@@ -63,7 +63,7 @@
     </form>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        (function () {
             const progress = document.getElementById('progress');
             const status = document.getElementById('status');
             if (!progress || !status) return;
@@ -79,6 +79,6 @@
                 if (this.value === 'Selesai') progress.value = 100;
                 if (this.value === 'Belum Dimulai') progress.value = 0;
             });
-        });
+        })();
     </script>
 @endsection

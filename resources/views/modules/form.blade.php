@@ -100,6 +100,15 @@
             </p>
         @endif
 
+        @if($module === 'activities')
+            <p class="form-hint">
+                Progres dan status dijaga tetap konsisten: <strong>0%</strong> berarti <strong>Belum Dimulai</strong>,
+                <strong>1–99%</strong> berarti <strong>Proses</strong> atau <strong>Tertunda</strong>, dan
+                <strong>100%</strong> otomatis menjadi <strong>Selesai</strong>. Memilih status Selesai otomatis
+                mengisi progres 100%, memilih Belum Dimulai mengembalikan progres ke 0%.
+            </p>
+        @endif
+
         @if(isset($d['workflow']))
             <p class="form-hint workflow-hint">
                 <strong>Status tidak diisi manual.</strong>
@@ -117,4 +126,26 @@
             <button class="btn primary" type="submit">{{ $row ? 'Simpan Perubahan' : 'Simpan Data' }}</button>
         </div>
     </form>
+
+    @if($module === 'activities')
+        <script>
+            (function () {
+                const progress = document.getElementById('progress');
+                const status = document.getElementById('status');
+                if (!progress || !status) return;
+
+                progress.addEventListener('input', function () {
+                    const value = Number(this.value);
+                    if (value >= 100) status.value = 'Selesai';
+                    else if (value === 0) status.value = 'Belum Dimulai';
+                    else if (status.value === 'Selesai' || status.value === 'Belum Dimulai') status.value = 'Proses';
+                });
+
+                status.addEventListener('change', function () {
+                    if (this.value === 'Selesai') progress.value = 100;
+                    if (this.value === 'Belum Dimulai') progress.value = 0;
+                });
+            })();
+        </script>
+    @endif
 @endsection

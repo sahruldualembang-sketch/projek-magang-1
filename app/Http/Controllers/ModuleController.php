@@ -610,35 +610,40 @@ class ModuleController extends Controller
      $statusField = collect($d['fields'])->firstWhere('name', 'status');
      $statusOptions = $statusField['options'] ?? [];
 
-     $rawProgress = $r->input('progress');
-     $progress = is_numeric($rawProgress) ? (int) $rawProgress : $rawProgress;
-     $status = (string) $r->input('status', '');
+     $normalized = $this->normalizeActivityProgress($r->input('progress'), $r->input('status'));
 
-     // Jaga konsistensi progres dan status agar tidak ada kombinasi
-     // mustahil seperti "80% tapi Belum Dimulai" atau "100% tapi Proses".
-     if (is_int($progress)) {
-         if ($progress >= 100) {
-             $progress = 100;
+     return Validator::make($normalized, [
+         'progress' => ['required', 'integer', 'min:0', 'max:100'],
+         'status' => ['required', Rule::in($statusOptions)],
+     ])->validate();
+ }
+ /**
+  * Samakan progres dan status aktivitas agar tidak ada kombinasi mustahil
+  * seperti "80% tapi Belum Dimulai" atau "100% tapi Proses".
+  * Dipakai baik oleh jalur staff (Ubah Progres) maupun jalur form lengkap.
+  */
+ private function normalizeActivityProgress(mixed $progress, mixed $status): array
+ {
+     $status = (string) $status;
+     $value = is_numeric($progress) ? (int) $progress : $progress;
+
+     if (is_int($value)) {
+         if ($value >= 100) {
+             $value = 100;
              $status = 'Selesai';
          } elseif ($status === 'Selesai') {
-             $progress = 100;
-         } elseif ($progress <= 0) {
-             $progress = 0;
+             $value = 100;
+         } elseif ($value <= 0) {
+             $value = 0;
              if (! in_array($status, ['Belum Dimulai', 'Tertunda'], true)) {
                  $status = 'Belum Dimulai';
              }
          } elseif ($status === 'Belum Dimulai') {
-             $progress = 0;
+             $value = 0;
          }
      }
 
-     return Validator::make([
-         'progress' => $progress,
-         'status' => $status,
-     ], [
-         'progress' => ['required', 'integer', 'min:0', 'max:100'],
-         'status' => ['required', Rule::in($statusOptions)],
-     ])->validate();
+     return ['progress' => $value, 'status' => $status];
  }
  private function workflow(?array $d): ?array
  {
@@ -757,6 +762,11 @@ class ModuleController extends Controller
      }
      if ($module === 'payrolls') {
          $data['net_salary'] = round((float) $data['basic_salary'] + (float) ($data['allowance'] ?? 0) - (float) ($data['deduction'] ?? 0), 2);
+     }
+     if ($module === 'activities' && array_key_exists('progress', $data) && array_key_exists('status', $data)) {
+         $normalized = $this->normalizeActivityProgress($data['progress'], $data['status']);
+         $data['progress'] = $normalized['progress'];
+         $data['status'] = $normalized['status'];
      }
 
      return $data;
