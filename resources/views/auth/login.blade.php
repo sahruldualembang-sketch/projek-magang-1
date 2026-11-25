@@ -71,14 +71,14 @@
                         </div>
                     </div>
 
-                    <div class="login-field" x-data="{ show: false }">
-                        <div class="login-control has-toggle">
+                    <div class="login-field" x-data="{ show: false, value: '' }">
+                        <div class="login-control has-toggle" x-bind:class="{ 'has-value': value.length > 0 }">
                             <svg class="login-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <rect x="4" y="8.5" width="12" height="9" rx="2.2"/>
                                 <path d="M7 8.5V6a3 3 0 0 1 6 0v2.5"/>
                                 <circle cx="10" cy="13" r="1.2" fill="currentColor" stroke="none"/>
                             </svg>
-                            <input id="password" x-bind:type="show ? 'text' : 'password'" type="password" name="password" required autocomplete="current-password" placeholder=" ">
+                            <input id="password" x-model="value" x-bind:type="show ? 'text' : 'password'" type="password" name="password" required autocomplete="current-password" placeholder=" ">
                             <label for="password">Kata sandi</label>
                             <button class="login-toggle" type="button" x-on:click="show = !show" x-bind:aria-label="show ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'" x-bind:aria-pressed="show">
                                 <svg x-cloak x-show="!show" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

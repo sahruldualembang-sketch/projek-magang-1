@@ -566,7 +566,10 @@ tbody tr:hover { background: #fafbfd; }
     transition: top .22s cubic-bezier(.2,.8,.2,1), transform .22s cubic-bezier(.2,.8,.2,1), font-size .22s ease, color .22s ease;
 }
 .login-control:focus-within label,
-.login-control input:not(:placeholder-shown) + label {
+.login-control input:not(:placeholder-shown) + label,
+.login-control input:-webkit-autofill + label,
+.login-control input:autofill + label,
+.login-control.has-value label {
     top: 11px; transform: none; font-size: 10px; font-weight: 750; color: var(--blue);
 }
 .login-icon {
