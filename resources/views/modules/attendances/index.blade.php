@@ -26,7 +26,7 @@
                 <div class="attendance-clock">
                     <span class="eyebrow">WAKTU SEKARANG</span>
                     <strong>{{ $today->translatedFormat('l, d F Y') }}</strong>
-                    <time>{{ $today->format('H:i:s') }}</time>
+                    <time data-live-clock>{{ $today->format('H:i:s') }}</time>
                     <span>
                         @if($isScheduledWorkday)
                             Jadwal {{ substr($settings->start_time, 0, 5) }}–{{ substr($scheduledEnd, 0, 5) }}
@@ -70,36 +70,10 @@
                 @endif
             </section>
 
-            <section class="panel leave-request-panel">
-                <div class="panel-head">
-                    <div>
-                        <h2>Pengajuan Izin atau Sakit</h2>
-                        <p>Pengajuan akan dicatat sebagai absensi setelah disetujui HR.</p>
-                    </div>
-                </div>
-                <form class="toolbar" method="POST" action="{{ route('attendance.leave-request') }}">
-                    @csrf
-                    <label class="search-field">
-                        <span>Tanggal</span>
-                        <input type="date" name="attendance_date" value="{{ old('attendance_date', $today->toDateString()) }}" required>
-                        @error('attendance_date')<small class="field-error">{{ $message }}</small>@enderror
-                    </label>
-                    <label class="search-field">
-                        <span>Jenis</span>
-                        <select name="request_type" required>
-                            <option value="Izin" @selected(old('request_type') === 'Izin')>Izin</option>
-                            <option value="Sakit" @selected(old('request_type') === 'Sakit')>Sakit</option>
-                        </select>
-                        @error('request_type')<small class="field-error">{{ $message }}</small>@enderror
-                    </label>
-                    <label class="search-field leave-reason-field">
-                        <span>Alasan</span>
-                        <input type="text" name="reason" value="{{ old('reason') }}" maxlength="2000" required>
-                        @error('reason')<small class="field-error">{{ $message }}</small>@enderror
-                    </label>
-                    <button class="btn secondary" type="submit">Kirim Pengajuan</button>
-                </form>
-            </section>
+            <div class="panel" style="margin-bottom: 20px; border-left: 4px solid #3b82f6; background: #f8fafc; padding: 14px 18px; border-radius: 8px;">
+                <strong style="color: #1e40af; font-size: 12px;">ℹ Integrasi Presensi & Perizinan Aplikasi</strong>
+                <p style="margin: 4px 0 0; font-size: 11px; color: #475569;">Presensi harian, izin, dan sakit dicatat langsung melalui aplikasi presensi perusahaan. Halaman ini menyajikan rekapitulasi data kehadiran resmi Anda.</p>
+            </div>
 
             <section class="panel attendance-requests-panel">
                 <div class="panel-head">
@@ -146,6 +120,60 @@
                 </span>
             </div>
         </div>
+
+        @if(auth()->user()->employee && !$isPrint)
+            @php
+                $isScheduledWorkday = in_array($today->dayOfWeekIso, array_map('intval', json_decode($settings->workdays, true) ?? []), true);
+                $scheduledEnd = $today->dayOfWeekIso === 6 ? $settings->saturday_end_time : $settings->weekday_end_time;
+            @endphp
+            <section class="panel attendance-self-panel" style="margin-bottom: 20px;">
+                <div class="attendance-clock">
+                    <span class="eyebrow">ABSENSI PRIBADI ANDA</span>
+                    <strong>{{ auth()->user()->employee->name }}</strong>
+                    <time data-live-clock>{{ $today->format('H:i:s') }}</time>
+                    <span>
+                        @if($isScheduledWorkday)
+                            Jadwal {{ substr($settings->start_time, 0, 5) }}–{{ substr($scheduledEnd, 0, 5) }}
+                        @elseif($today->dayOfWeekIso === 7)
+                            Hari libur (Minggu)
+                        @else
+                            Bukan hari kerja terjadwal
+                        @endif
+                    </span>
+                </div>
+
+                <div class="attendance-today">
+                    <div>
+                        <span class="attendance-label">Status absensi Anda hari ini</span>
+                        @if(!$todayAttendance)
+                            <strong class="status belum-absen">Belum ada rekaman</strong>
+                        @else
+                            <strong class="status {{ \Illuminate\Support\Str::slug($todayAttendance->status) }}">
+                                {{ $todayAttendance->status }}
+                            </strong>
+                        @endif
+                    </div>
+                    <div class="attendance-time">
+                        <span>Jam masuk</span>
+                        <strong>{{ $todayAttendance && $todayAttendance->check_in ? substr($todayAttendance->check_in, 0, 5) : '—' }}</strong>
+                    </div>
+                    <div class="attendance-time">
+                        <span>Jam pulang</span>
+                        <strong>{{ $todayAttendance && $todayAttendance->check_out ? substr($todayAttendance->check_out, 0, 5) : '—' }}</strong>
+                    </div>
+                    <div class="attendance-action">
+                        <span class="attendance-source-tag">
+                            <span class="dot"></span> Real-Time Sync
+                        </span>
+                        <span class="attendance-source-desc">Tercatat otomatis via aplikasi presensi kantor</span>
+                    </div>
+                </div>
+
+                @if($todayAttendance && $todayAttendance->status === 'Terlambat')
+                    <p class="attendance-late">Anda tercatat terlambat berdasarkan jam kerja yang ditetapkan.</p>
+                @endif
+            </section>
+        @endif
 
         @if($leaveRequests && !$isPrint)
             <section class="panel attendance-requests-panel">
@@ -260,6 +288,13 @@
                 </label>
                 <div class="filter-actions">
                     <button class="btn secondary" type="submit">Terapkan Filter</button>
+                    @if(!$isStaff && auth()->user()->employee)
+                        @if($filters['nama'] === auth()->user()->employee->name)
+                            <a class="btn ghost" href="{{ route('modules.index', 'attendances') }}">Tampilkan Semua Karyawan</a>
+                        @else
+                            <a class="btn ghost" href="{{ route('modules.index', ['module' => 'attendances', 'nama' => auth()->user()->employee->name]) }}">👤 Hanya Absensi Saya</a>
+                        @endif
+                    @endif
                     <a class="btn ghost" href="{{ route('modules.index', 'attendances') }}">Reset</a>
                 </div>
             </form>
@@ -354,4 +389,41 @@
             <div class="pagination">@include('components.pagination', ['paginator' => $correctionHistory])</div>
         </section>
     @endif
+
+    @unless($isPrint)
+        <script>
+            (function () {
+                const formatter = new Intl.DateTimeFormat('en-GB', {
+                    timeZone: @json(config('app.timezone')),
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hourCycle: 'h23'
+                });
+
+                // Navigasi SPA memuat ulang skrip; hentikan timer lama agar tidak menumpuk.
+                if (window.__attendanceClockTimer) {
+                    clearInterval(window.__attendanceClockTimer);
+                    window.__attendanceClockTimer = null;
+                }
+
+                function updateClock() {
+                    const nodes = document.querySelectorAll('[data-live-clock]');
+                    if (nodes.length === 0) {
+                        clearInterval(window.__attendanceClockTimer);
+                        window.__attendanceClockTimer = null;
+                        return;
+                    }
+
+                    const value = formatter.format(new Date());
+                    nodes.forEach(function (node) {
+                        node.textContent = value;
+                    });
+                }
+
+                updateClock();
+                window.__attendanceClockTimer = setInterval(updateClock, 1000);
+            })();
+        </script>
+    @endunless
 @endsection

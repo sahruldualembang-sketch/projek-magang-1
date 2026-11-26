@@ -1,5 +1,5 @@
 <?php
-use App\Http\Controllers\Auth\AuthenticatedSessionController; use App\Http\Controllers\DashboardController; use App\Http\Controllers\ModuleController; use App\Http\Controllers\ProfitLossController; use App\Http\Controllers\UserManagementController; use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Auth\AuthenticatedSessionController; use App\Http\Controllers\DashboardController; use App\Http\Controllers\ModuleController; use App\Http\Controllers\ProfileController; use App\Http\Controllers\ProfitLossController; use App\Http\Controllers\UserManagementController; use Illuminate\Support\Facades\Route;
 Route::get('/login',[AuthenticatedSessionController::class,'create'])->name('login'); Route::post('/login',[AuthenticatedSessionController::class,'store'])->middleware('throttle:5,1');
 Route::middleware('auth')->group(function(){Route::post('/logout',[AuthenticatedSessionController::class,'destroy'])->name('logout');Route::get('/',DashboardController::class)->name('dashboard');Route::get('/laporan-laba-rugi',[ProfitLossController::class,'index'])->name('profit-loss');Route::middleware('role:super_admin')->prefix('pengguna')->name('users.')->group(function(){Route::get('/',[UserManagementController::class,'index'])->name('index');Route::get('/buat',[UserManagementController::class,'create'])->name('create');Route::post('/',[UserManagementController::class,'store'])->name('store');Route::get('/{user}/ubah',[UserManagementController::class,'edit'])->name('edit');Route::put('/{user}',[UserManagementController::class,'update'])->name('update');});Route::get('/modul/{module}/{id}/file',[ModuleController::class,'download'])->name('modules.file');Route::get('/modul/{module}',[ModuleController::class,'index'])->name('modules.index');Route::get('/modul/{module}/buat',[ModuleController::class,'create'])->name('modules.create');Route::post('/modul/{module}',[ModuleController::class,'store'])->name('modules.store');Route::get('/modul/{module}/{id}/ubah',[ModuleController::class,'edit'])->name('modules.edit');Route::put('/modul/{module}/{id}',[ModuleController::class,'update'])->name('modules.update');Route::delete('/modul/{module}/{id}',[ModuleController::class,'destroy'])->name('modules.destroy');});
 
@@ -24,6 +24,11 @@ Route::middleware('auth')->group(function (): void {
         ->name('activities.progress.update');
 });
 
+Route::middleware('auth')->prefix('akun')->name('profile.')->group(function (): void {
+    Route::get('/kata-sandi', [ProfileController::class, 'editPassword'])->name('password.edit');
+    Route::put('/kata-sandi', [ProfileController::class, 'updatePassword'])->middleware('throttle:6,1')->name('password.update');
+});
+
 Route::middleware(['auth', 'role:staff'])->group(function (): void {
     Route::post('/absensi/masuk', [\App\Http\Controllers\AttendanceController::class, 'clockIn'])
         ->middleware('throttle:10,1')
@@ -36,6 +41,8 @@ Route::middleware(['auth', 'role:staff'])->group(function (): void {
 });
 
 Route::middleware(['auth', 'role:hr,super_admin'])->group(function (): void {
+    Route::post('/modul/payrolls/generate-batch', [ModuleController::class, 'generateBatchPayroll'])
+        ->name('payrolls.generate-batch');
     Route::get('/modul/attendances/{id}/correction', [\App\Http\Controllers\AttendanceController::class, 'editCorrection'])
         ->whereNumber('id')
         ->name('attendance.correction.edit');
@@ -48,6 +55,17 @@ Route::middleware(['auth', 'role:hr,super_admin'])->group(function (): void {
     Route::post('/absensi/pengajuan/{id}/tolak', [\App\Http\Controllers\AttendanceController::class, 'rejectLeaveRequest'])
         ->whereNumber('id')
         ->name('attendance.leave-reject');
+});
+
+Route::middleware('auth')->group(function (): void {
+    Route::get('/modul/payrolls/{id}/slip', [ModuleController::class, 'payslip'])
+        ->whereNumber('id')
+        ->name('payrolls.slip');
+});
+
+Route::middleware(['auth', 'role:super_admin'])->prefix('pengaturan/absensi')->name('settings.attendance.')->group(function (): void {
+    Route::post('/libur', [\App\Http\Controllers\AttendanceController::class, 'storeHoliday'])->name('holidays.store');
+    Route::delete('/libur/{id}', [\App\Http\Controllers\AttendanceController::class, 'destroyHoliday'])->name('holidays.destroy');
 });
 
 Route::middleware(['auth', 'role:super_admin'])->prefix('pengaturan')->name('settings.')->group(function (): void {

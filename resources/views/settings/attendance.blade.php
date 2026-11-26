@@ -73,12 +73,67 @@
             <div class="settings-policy-note">
                 Status Terlambat mulai dihitung setelah {{ (int) $settings->late_grace_minutes }} menit dari jam mulai.
                 Alpha hanya ditetapkan pada hari kerja yang dipilih, setelah jam selesai, bila absensi belum ada.
-                Tidak ada tanggal hari libur khusus. Laravel Scheduler harus berjalan agar penetapan Alpha otomatis diproses.
+                Hari libur nasional yang terdaftar di bawah akan secara otomatis dilewati dari penetapan Alpha.
             </div>
 
             <div class="filter-actions">
-                <button class="btn primary" type="submit">Simpan Pengaturan</button>
+                <button class="btn primary" type="submit">Simpan Pengaturan Jam Kerja</button>
             </div>
         </form>
+    </section>
+
+    <section class="panel attendance-holidays-panel" style="margin-top: 24px;">
+        <div class="panel-head">
+            <div>
+                <h2>Hari Libur Nasional & Cuti Bersama Perusahaan</h2>
+                <p>Tanggal-tanggal di bawah ini akan dikecualikan dari penetapan Alpha otomatis oleh scheduler.</p>
+            </div>
+        </div>
+
+        <form class="toolbar" method="POST" action="{{ route('settings.attendance.holidays.store') }}" style="margin-bottom: 20px;">
+            @csrf
+            <label class="search-field">
+                <span>Tanggal Libur</span>
+                <input type="date" name="holiday_date" required>
+                @error('holiday_date')<small class="field-error">{{ $message }}</small>@enderror
+            </label>
+            <label class="search-field" style="flex: 2;">
+                <span>Keterangan Libur</span>
+                <input type="text" name="description" placeholder="Contoh: Tahun Baru, Idul Fitri, Hari Kemerdekaan" required maxlength="150">
+                @error('description')<small class="field-error">{{ $message }}</small>@enderror
+            </label>
+            <button class="btn primary" type="submit">＋ Tambah Hari Libur</button>
+        </form>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 140px;">Tanggal</th>
+                        <th>Keterangan</th>
+                        <th style="width: 100px; text-align: right;">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($holidays as $holiday)
+                        <tr>
+                            <td class="strong">{{ \Illuminate\Support\Carbon::parse($holiday->holiday_date)->format('d/m/Y') }}</td>
+                            <td>{{ $holiday->description }}</td>
+                            <td style="text-align: right;">
+                                <form method="POST" action="{{ route('settings.attendance.holidays.destroy', $holiday->id) }}" onsubmit="return confirm('Hapus hari libur ini?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button class="link-danger" type="submit">Hapus</button>
+                                </form>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="3" class="empty">Belum ada hari libur khusus yang didaftarkan.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
     </section>
 @endsection

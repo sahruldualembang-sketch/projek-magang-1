@@ -13,6 +13,13 @@ class AuthenticatedSessionController extends Controller
         if (!Auth::attempt($credentials + ['is_active'=>1], $request->boolean('remember'))) {
             throw ValidationException::withMessages(['email'=>'Email atau kata sandi salah, atau akun tidak aktif.']);
         }
+        $user = Auth::user();
+        if ($user && $user->employee && $user->employee->employment_status === 'Nonaktif') {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            throw ValidationException::withMessages(['email'=>'Akun telah dinonaktifkan karena status kepegawaian tidak aktif.']);
+        }
         $request->session()->regenerate();
         return redirect()->intended(route('dashboard'));
     }

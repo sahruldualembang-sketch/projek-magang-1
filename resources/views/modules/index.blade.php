@@ -16,9 +16,46 @@
             </p>
         </div>
         @if(auth()->user()->role !== 'staff' && (! $workflow || auth()->user()->hasRole($workflow['maker_roles'])))
-            <a class="btn primary" href="{{ route('modules.create', $module) }}">＋ Tambah {{ $d['singular'] }}</a>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                @if($module === 'payrolls')
+                    <form method="POST" action="{{ route('payrolls.generate-batch') }}" style="display: inline-flex; gap: 6px; align-items: center;" onsubmit="return confirm('Generate draf gaji untuk semua karyawan aktif pada periode terpilih?')">
+                        @csrf
+                        <input type="month" name="period" value="{{ now()->format('Y-m') }}" required style="padding: 6px 10px; font-size: 11px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff;">
+                        <button class="btn secondary" type="submit">⚡ Buat Draf Massal</button>
+                    </form>
+                @endif
+                <a class="btn primary" href="{{ route('modules.create', $module) }}">＋ Tambah {{ $d['singular'] }}</a>
+            </div>
         @endif
     </div>
+
+    @if(session('generated_credentials'))
+        <section class="panel credentials-panel">
+            <div class="panel-head">
+                <div>
+                    <h2>Kredensial Akun Baru</h2>
+                    <p>Catat dan serahkan kepada karyawan. Kata sandi hanya ditampilkan sekali di halaman ini.</p>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr><th>Kode Karyawan</th><th>Nama</th><th>Email Login</th><th>Kata Sandi Sementara</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach(session('generated_credentials') as $credential)
+                            <tr>
+                                <td class="strong">{{ $credential['employee_code'] }}</td>
+                                <td>{{ $credential['name'] }}</td>
+                                <td><code>{{ $credential['email'] }}</code></td>
+                                <td><code>{{ $credential['password'] }}</code></td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    @endif
 
     @if($workflow)
         <p class="form-hint workflow-hint">
@@ -211,6 +248,10 @@
                                             @method('DELETE')
                                             <button class="link-danger" type="submit">Hapus</button>
                                         </form>
+                                    @endif
+
+                                    @if($module === 'payrolls')
+                                        <a class="table-link" href="{{ route('payrolls.slip', $row->id) }}" target="_blank">📄 Slip Gaji</a>
                                     @endif
 
                                     @if(auth()->user()->role === 'staff' && ! $canEditOwnActivity)

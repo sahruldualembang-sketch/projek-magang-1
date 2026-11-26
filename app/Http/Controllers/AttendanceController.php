@@ -128,9 +128,10 @@ class AttendanceController extends Controller
 
         $today = now();
         $todayAttendance = null;
-        if ($isStaff) {
+        $myEmployeeId = $user->employee_id;
+        if ($myEmployeeId && $user->employee()->exists()) {
             $todayAttendance = DB::table('attendances')
-                ->where('employee_id', $this->staffEmployeeId($user))
+                ->where('employee_id', $myEmployeeId)
                 ->whereDate('attendance_date', $today->toDateString())
                 ->first();
         }
@@ -408,11 +409,39 @@ class AttendanceController extends Controller
     {
         abort_unless(auth()->user()->hasRole(['super_admin']), 403);
         $settings = $this->attendanceSettings();
+        $holidays = DB::table('company_holidays')->orderBy('holiday_date')->get();
 
         return view('settings.attendance', [
             'settings' => $settings,
             'workdays' => $this->workdays($settings),
+            'holidays' => $holidays,
         ]);
+    }
+
+    public function storeHoliday(Request $r): RedirectResponse
+    {
+        abort_unless(auth()->user()->hasRole(['super_admin']), 403);
+        $data = $r->validate([
+            'holiday_date' => ['required', 'date_format:Y-m-d', 'unique:company_holidays,holiday_date'],
+            'description' => ['required', 'string', 'max:150'],
+        ]);
+
+        $id = DB::table('company_holidays')->insertGetId($data + ['created_at' => now(), 'updated_at' => now()]);
+        $this->writeAudit('company_holidays', 'created', $id, null, $data, $r);
+
+        return redirect()->route('settings.attendance')->with('success', 'Hari libur berhasil ditambahkan.');
+    }
+
+    public function destroyHoliday(Request $r, int $id): RedirectResponse
+    {
+        abort_unless(auth()->user()->hasRole(['super_admin']), 403);
+        $holiday = DB::table('company_holidays')->where('id', $id)->first();
+        if ($holiday) {
+            DB::table('company_holidays')->where('id', $id)->delete();
+            $this->writeAudit('company_holidays', 'deleted', $id, (array) $holiday, null, $r);
+        }
+
+        return redirect()->route('settings.attendance')->with('success', 'Hari libur berhasil dihapus.');
     }
 
     public function updateSettings(Request $request): RedirectResponse

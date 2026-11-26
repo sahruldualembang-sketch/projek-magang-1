@@ -16,7 +16,7 @@ return [
         ],
     ],
     'attendances' => [
-        'title' => 'Data Absensi', 'singular' => 'Absensi', 'table' => 'attendances', 'roles' => ['super_admin', 'director', 'hr', 'staff'],
+        'title' => 'Data Absensi', 'singular' => 'Absensi', 'table' => 'attendances', 'roles' => ['super_admin', 'director', 'hr', 'finance', 'staff'],
         'fields' => [
             ['name'=>'employee_id','label'=>'Karyawan','type'=>'relation','rules'=>'required|exists:employees,id','relation'=>'employees'],
             ['name'=>'attendance_date','label'=>'Tanggal','type'=>'date','rules'=>'required|date'],

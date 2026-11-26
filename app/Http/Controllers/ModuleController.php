@@ -1,5 +1,6 @@
 <?php
 namespace App\Http\Controllers;
+use App\Models\Employee; use App\Models\User; use App\Services\EmployeeAccountService;
 use Illuminate\Http\Request; use Illuminate\Support\Facades\DB; use Illuminate\Support\Facades\Validator; use Illuminate\Support\Facades\Storage; use Illuminate\Validation\Rule;
 class ModuleController extends Controller
 {
@@ -374,6 +375,13 @@ class ModuleController extends Controller
      abort_if(auth()->user()->role === 'staff', 403);
      $this->ensureMaker($d);
 
+     $accountPassword = null;
+     if ($module === 'employees' && auth()->user()->hasRole(['hr', 'super_admin'])) {
+         $accountPassword = $r->validate([
+             'account_password' => ['nullable', 'string', 'min:12'],
+         ])['account_password'] ?? null;
+     }
+
      $data = $this->prepareData($module, $this->validated($r, $d));
      $data = $this->applyWorkflowDefaults($d, $data);
      // Jika nomor belum diisi, generate otomatis sebelum simpan (failsafe)
@@ -384,7 +392,36 @@ class ModuleController extends Controller
      $id = DB::table($d['table'])->insertGetId($data + ['created_at' => now(), 'updated_at' => now()]);
      $this->audit($module, 'created', $id, null, $data);
 
-     return redirect()->route('modules.index', $module)->with('success', $d['singular'] . ' berhasil ditambahkan.');
+     $credentials = null;
+     $accountFailed = false;
+
+     if ($module === 'employees' && auth()->user()->hasRole(['hr', 'super_admin'])) {
+         $employee = Employee::find($id);
+
+         if ($employee && $employee->employment_status !== 'Nonaktif' && ! $employee->user()->exists()) {
+             try {
+                 $credentials = app(EmployeeAccountService::class)->createFor($employee, $accountPassword);
+             } catch (\Throwable $e) {
+                 report($e);
+                 $accountFailed = true;
+             }
+         }
+     }
+
+     $message = $d['singular'] . ' berhasil ditambahkan.';
+     if ($credentials) {
+         $message .= ' Akun login karyawan juga dibuat; catat kredensial yang ditampilkan.';
+     } elseif ($accountFailed) {
+         $message .= ' Namun akun login gagal dibuat; hubungi Super Admin.';
+     }
+
+     $redirect = redirect()->route('modules.index', $module)->with('success', $message);
+
+     if ($credentials) {
+         $redirect->with('generated_credentials', [$credentials]);
+     }
+
+     return $redirect;
  }
 
  public function edit(string $module, int $id)
@@ -432,6 +469,27 @@ class ModuleController extends Controller
 
      DB::table($d['table'])->where('id', $id)->update($data + ['updated_at' => now()]);
      $this->audit($module, 'updated', $id, (array) $before, $data);
+
+     if ($module === 'employees') {
+         $user = User::where('employee_id', $id)->first();
+         if ($user) {
+             $userUpdates = [];
+             if (($data['employment_status'] ?? null) === 'Nonaktif' && $user->is_active) {
+                 $userUpdates['is_active'] = false;
+                 DB::table('sessions')->where('user_id', $user->id)->delete();
+             }
+             if (! empty($data['name']) && $data['name'] !== $user->name) {
+                 $userUpdates['name'] = $data['name'];
+             }
+             if (! empty($data['email']) && $data['email'] !== $user->email && ! User::where('email', $data['email'])->where('id', '!=', $user->id)->exists()) {
+                 $userUpdates['email'] = $data['email'];
+             }
+             if ($userUpdates !== []) {
+                 $user->update($userUpdates);
+                 $this->audit('users', 'employee_sync', $user->id, (array) $user->getOriginal(), $userUpdates);
+             }
+         }
+     }
 
      if ($oldFile) {
          Storage::disk('local')->delete($oldFile);
@@ -771,6 +829,80 @@ class ModuleController extends Controller
 
      return $data;
  }
+ public function payslip(int $id)
+ {
+     $payroll = DB::table('payrolls')
+         ->join('employees', 'employees.id', '=', 'payrolls.employee_id')
+         ->select('payrolls.*', 'employees.name as employee_name', 'employees.employee_code', 'employees.department', 'employees.position', 'employees.employment_status')
+         ->where('payrolls.id', $id)
+         ->first();
+
+     abort_unless($payroll, 404);
+
+     $user = auth()->user();
+     if ($user->role === 'staff') {
+         abort_unless($user->employee_id === $payroll->employee_id, 403, 'Anda hanya dapat melihat slip gaji milik sendiri.');
+     } else {
+         abort_unless($user->hasRole(['super_admin', 'director', 'hr', 'finance']), 403);
+     }
+
+     return view('modules.payrolls.slip', compact('payroll'));
+ }
+
+ public function generateBatchPayroll(Request $r)
+ {
+     $d = $this->definition('payrolls');
+     $this->ensureMaker($d);
+
+     $validated = $r->validate([
+         'period' => ['required', 'date_format:Y-m'],
+     ]);
+     $period = $validated['period'];
+
+     $activeEmployees = DB::table('employees')
+         ->where('employment_status', '!=', 'Nonaktif')
+         ->whereNotExists(function ($query) use ($period) {
+             $query->selectRaw('1')
+                 ->from('payrolls')
+                 ->whereColumn('payrolls.employee_id', 'employees.id')
+                 ->where('payrolls.payroll_period', $period);
+         })
+         ->get();
+
+     if ($activeEmployees->isEmpty()) {
+         return redirect()->route('modules.index', 'payrolls')
+             ->with('info', "Semua karyawan aktif sudah memiliki draf gaji untuk periode {$period}.");
+     }
+
+     $createdCount = 0;
+     DB::transaction(function () use ($activeEmployees, $period, &$createdCount) {
+         foreach ($activeEmployees as $emp) {
+             $basic = (float) ($emp->base_salary ?? 0);
+             $id = DB::table('payrolls')->insertGetId([
+                 'employee_id' => $emp->id,
+                 'payroll_period' => $period,
+                 'basic_salary' => $basic,
+                 'allowance' => 0,
+                 'deduction' => 0,
+                 'net_salary' => $basic,
+                 'status' => 'Draft',
+                 'created_at' => now(),
+                 'updated_at' => now(),
+             ]);
+             $this->audit('payrolls', 'created', $id, null, [
+                 'employee_id' => $emp->id,
+                 'payroll_period' => $period,
+                 'basic_salary' => $basic,
+                 'status' => 'Draft',
+             ]);
+             $createdCount++;
+         }
+     });
+
+     return redirect()->route('modules.index', 'payrolls')
+         ->with('success', "Berhasil membuat {$createdCount} draf gaji untuk periode {$period}.");
+ }
+
  public function download(string $module,int $id){$d=$this->definition($module);abort_unless(in_array($module,['contracts','legal_documents','invoices']),404);$row=$this->scopedQuery($module,$d)->where('id',$id)->first();abort_unless($row && $row->file_path && Storage::disk('local')->exists($row->file_path),404);return Storage::disk('local')->download($row->file_path,$row->file_name ?: basename($row->file_path));}
  private function audit(string $module,string $action,int $id,?array $before,?array $after):void{DB::table('audit_logs')->insert(['user_id'=>auth()->id(),'module'=>$module,'action'=>$action,'record_id'=>$id,'before_data'=>$before?json_encode($before):null,'after_data'=>$after?json_encode($after):null,'ip_address'=>request()->ip(),'created_at'=>now(),'updated_at'=>now()]);}
 }

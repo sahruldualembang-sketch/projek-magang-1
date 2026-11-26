@@ -141,6 +141,10 @@ class AttendanceApiController extends Controller
 
                 if ($type === 'in') {
                     if ($existing) {
+                        if (in_array($existing->status, ['Izin', 'Sakit'], true)) {
+                            return ['action' => 'leave_conflict', 'record_id' => $existing->id, 'status' => $existing->status, 'check_in' => $existing->check_in, 'check_out' => $existing->check_out];
+                        }
+
                         // Jika sudah ada tapi Alpha (otomatis), perbarui dengan jam masuk riil
                         if ($existing->status === 'Alpha' || empty($existing->check_in)) {
                             DB::table('attendances')->where('id', $existing->id)->update([
@@ -174,6 +178,10 @@ class AttendanceApiController extends Controller
 
                 // Type === 'out' (Absen Pulang)
                 if ($existing) {
+                    if (in_array($existing->status, ['Izin', 'Sakit'], true)) {
+                        return ['action' => 'leave_conflict', 'record_id' => $existing->id, 'status' => $existing->status, 'check_in' => $existing->check_in, 'check_out' => $existing->check_out];
+                    }
+
                     DB::table('attendances')->where('id', $existing->id)->update([
                         'check_out' => $time,
                         'updated_at' => $now,
@@ -204,6 +212,19 @@ class AttendanceApiController extends Controller
                 'success' => false,
                 'message' => 'Konflik data presensi: data tanggal ini sedang diproses.',
             ], 409);
+        }
+
+        if ($result['action'] === 'leave_conflict') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Karyawan tercatat memiliki izin/sakit pada tanggal ini (' . $date . '). Presensi tidak dapat dicatat.',
+                'data' => [
+                    'employee_code' => $employee->employee_code,
+                    'employee_name' => $employee->name,
+                    'attendance_date' => $date,
+                    'status' => $result['status'],
+                ],
+            ], 422);
         }
 
         // 7. Audit Log

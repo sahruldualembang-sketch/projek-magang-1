@@ -22,6 +22,14 @@ class MarkAbsentEmployees extends Command
         }
 
         $now = now();
+
+        $isHoliday = DB::table('company_holidays')->whereDate('holiday_date', $now->toDateString())->exists();
+        if ($isHoliday) {
+            $this->info("Hari ini ({$now->toDateString()}) adalah hari libur perusahaan. Alpha otomatis dilewati.");
+
+            return self::SUCCESS;
+        }
+
         $workdays = array_map('intval', json_decode($settings->workdays, true) ?? []);
         if ($now->dayOfWeekIso === 7 || ! $settings->automatic_alpha || ! in_array($now->dayOfWeekIso, $workdays, true)) {
             $this->info('Tidak ada penetapan Alpha untuk jadwal hari ini.');

@@ -101,6 +101,14 @@
                     </a>
                 </div>
             @endif
+
+            <div class="nav-section">
+                <div class="nav-caption">AKUN</div>
+                <a class="nav-link {{ request()->routeIs('profile.password.*') ? 'active' : '' }}"
+                   href="{{ route('profile.password.edit') }}">
+                    <span class="nav-icon">⚿</span><span>Ubah Kata Sandi</span>
+                </a>
+            </div>
         </div>
 
         <div class="sidebar-footer">

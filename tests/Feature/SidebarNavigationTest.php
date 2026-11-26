@@ -59,7 +59,10 @@ class SidebarNavigationTest extends TestCase
                 $expectedCaptions[] = 'ANALISIS & LAPORAN';
             }
 
+            $expectedCaptions[] = 'AKUN';
+
             $this->assertSame($expectedCaptions, $matches[1], "Unexpected sidebar sections for role {$role}.");
+            $this->assertStringContainsString('Ubah Kata Sandi', $content);
             $this->assertDoesNotMatchRegularExpression(
                 '/<div class="nav-section">\s*<div class="nav-caption">[^<]*<\/div>\s*<\/div>/',
                 $content,

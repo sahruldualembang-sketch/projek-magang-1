@@ -86,6 +86,16 @@
                     </div>
                 @endif
             @endforeach
+
+            @if($module === 'employees' && ! $row && auth()->user()->hasRole(['hr', 'super_admin']))
+                <div class="field">
+                    <label for="account_password">Kata Sandi Akun Karyawan</label>
+                    <input id="account_password" type="password" name="account_password" minlength="12"
+                           autocomplete="new-password" placeholder="Kosongkan untuk dibuat otomatis">
+                    <small>Opsional, minimal 12 karakter. Jika diisi, kata sandi awal akun memakai nilai ini; jika kosong, sistem membuat acak dan menampilkannya sekali.</small>
+                    @error('account_password')<small class="field-error">{{ $message }}</small>@enderror
+                </div>
+            @endif
         </div>
 
         @if(in_array($module, ['orders', 'invoices', 'payrolls']))
